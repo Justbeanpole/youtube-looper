@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>YouTube 구간 반복 플레이어</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-hover: #334155;
+      --accent: #38bdf8;
+      --accent-active: #0ea5e9;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .player-wrapper {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .player-wrapper iframe, .player-wrapper #player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .control-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .segments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }
+    .btn-segment {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+    .btn-segment:hover {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .btn-segment.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .btn-segment .time-range {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .btn-segment .desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tool-btn {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tool-btn:hover {
+      background: var(--card-hover);
+    }
+    .tool-btn.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      border-color: var(--accent);
+    }
+    .speed-select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .status-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .shortcuts {
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 6px;
+      padding: 10px 14px;
+      line-height: 1.6;
+    }
+    kbd {
+      background: #334155;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #f1f5f9;
+    }
+    .script-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .script-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .script-speaker {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .script-time {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
+    .script-content {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      font-style: italic;
+      word-break: keep-all;
+    }
+    .file-protocol-warning {
+      display: none;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    .file-protocol-warning strong {
+      color: #fee2e2;
+    }
+    .file-protocol-warning code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>YouTube 구간 반복 플레이어</h1>
+      <p>GET REAL S5 EP 11 • Glow up 대사 구간 반복</p>
+    </header>
+
+    <div id="fileWarning" class="file-protocol-warning">
+      ⚠️ <strong>오류 153 안내:</strong> YouTube 보안 정책으로 인해 브라우저에서 <code>file://</code> 경로로 직접 열면 영상이 차단됩니다.<br />
+      로컬 웹 서버(<code>http://localhost:8000/youtube_looper.html</code>)로 접속하시면 정상 재생됩니다.
+    </div>
+
+    <div class="player-wrapper">
+      <div id="player"></div>
+    </div>
+
+    <div class="control-panel">
+      <div class="section-title">구간 선택 (클릭 시 반복 재생)</div>
+      <div class="segments-grid" id="segmentsGrid"></div>
+
+      <div class="script-box" id="scriptBox">
+        <div class="script-header">
+          <div class="script-speaker" id="scriptSpeaker">대사 로딩 중...</div>
+          <div class="script-time" id="scriptTime"></div>
+        </div>
+        <div class="script-content" id="scriptContent"></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="tool-group">
+          <button class="tool-btn active" id="btnLoopToggle" onclick="toggleLoop()">반복 재생 켜짐</button>
+          <button class="tool-btn" onclick="prevSegment()">이전 구간 (Q)</button>
+          <button class="tool-btn" onclick="nextSegment()">다음 구간 (W)</button>
+          <button class="tool-btn" onclick="replayCurrent()">다시 재생 (R)</button>
+        </div>
+        <div class="tool-group">
+          <label for="speedSelect" class="status-text">배속:</label>
+          <select id="speedSelect" class="speed-select" onchange="changeSpeed(this.value)">
+            <option value="0.75">0.75x</option>
+            <option value="0.8">0.8x</option>
+            <option value="0.9">0.9x</option>
+            <option value="1.0" selected>1.0x (기본)</option>
+            <option value="1.25">1.25x</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="shortcuts">
+        <strong>단축키:</strong> <kbd>Space</kbd> 재생/일시정지 | <kbd>Q</kbd> 이전 구간 | <kbd>W</kbd> 다음 구간 | <kbd>R</kbd> 현재 구간 처음부터 | <kbd>L</kbd> 반복 On/Off
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const VIDEO_ID = 'y8wDcm_x74E';
+    
+    // 구간 정의 (시작초 ~ 종료초)
+    const segments = [
+      {
+        id: 0,
+        icon: "1️⃣",
+        speaker: "BM",
+        label: "1️⃣ BM",
+        start: 747,
+        end: 761,
+        text: "12:27 ~ 12:41 (14초)",
+        script: "Have you guys ever had that moment where like you try something new, like you switch your style up, whether it be your hair or something, you're just you look in the mirror after and you're like, I like this me. You guys ever have that?"
+      },
+      {
+        id: 1,
+        icon: "2️⃣",
+        speaker: "BM",
+        label: "2️⃣ BM",
+        start: 774,
+        end: 792,
+        text: "12:54 ~ 13:12 (18초)",
+        script: "But I feel like those moments are kind of like a start to a glow up phase. You know what I mean? Like, oh, I found something new about me that looks good and feels good. You know, when when did you feel like that happened? It's like when you change your clothes?"
+      },
+      {
+        id: 2,
+        icon: "3️⃣",
+        speaker: "Ashley",
+        label: "3️⃣ Ashley",
+        start: 792,
+        end: 818,
+        text: "13:12 ~ 13:38 (26초)",
+        script: "Well, recently I changed my hair and then I kind of had to change my entire like style because this was kind of like it was kind of tomboyish but also kind of I wanted to go for the '90s vibe, like the '90s Hollywood style. So then I felt like I had to change my style. But then I was like I dig it. And I think a after breakup you kind of have a glow up,"
+      },
+      {
+        id: 3,
+        icon: "4️⃣",
+        speaker: "BM",
+        label: "4️⃣ BM",
+        start: 836,
+        end: 860,
+        text: "13:56 ~ 14:20 (24초)",
+        script: "Cuz cuz after you pull yourself together from there it's just like motivation. Motivation I think is a really big influence on on having a glow up. Like when you just feel like, okay, this is what I'm going to do and this is how I'm going to do it. And you have you feel like you have everything locked in. Yeah. Motivation. How do we find motivation though?"
+      }
+    ];
+
+    let player = null;
+    let currentSegmentIndex = 0;
+    let isLooping = true;
+    let checkInterval = null;
+
+    // file:// 프로토콜 감지 시 경고 배너 표시
+    if (window.location.protocol === 'file:') {
+      const warnEl = document.getElementById('fileWarning');
+      if (warnEl) warnEl.style.display = 'block';
+    }
+
+    // YouTube IFrame API 로드
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    function onYouTubeIframeAPIReady() {
+      const origin = (window.location.protocol.startsWith('http')) ? window.location.origin : undefined;
+      player = new YT.Player('player', {
+        host: 'https://www.youtube-nocookie.com',
+        videoId: VIDEO_ID,
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          start: segments[0].start,
+          enablejsapi: 1,
+          ...(origin ? { origin: origin } : {})
+        },
+        events: {
+          'onReady': onPlayerReady
+        }
+      });
+    }
+
+    function updateScriptDisplay(idx) {
+      const seg = segments[idx];
+      const speakerEl = document.getElementById('scriptSpeaker');
+      const timeEl = document.getElementById('scriptTime');
+      const contentEl = document.getElementById('scriptContent');
+      if (speakerEl && seg) speakerEl.textContent = `${seg.icon} ${seg.speaker}`;
+      if (timeEl && seg) timeEl.textContent = seg.text;
+      if (contentEl && seg) contentEl.textContent = `"${seg.script}"`;
+    }
+
+    function renderButtons() {
+      const grid = document.getElementById('segmentsGrid');
+      grid.innerHTML = '';
+      segments.forEach((seg, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `btn-segment ${idx === currentSegmentIndex ? 'active' : ''}`;
+        btn.id = `seg-btn-${idx}`;
+        const parts = seg.text.split(' ');
+        btn.innerHTML = `
+          <div class="time-range">${parts[0]} ${parts[1]} ${parts[2]}</div>
+          <div class="desc">${seg.label} • ${seg.end - seg.start}초</div>
+        `;
+        btn.onclick = () => selectSegment(idx);
+        grid.appendChild(btn);
+      });
+      updateScriptDisplay(currentSegmentIndex);
+    }
+
+    function onPlayerReady() {
+      renderButtons();
+      startLoopMonitor();
+    }
+
+    function selectSegment(idx) {
+      currentSegmentIndex = idx;
+      updateActiveButton();
+      updateScriptDisplay(idx);
+      const seg = segments[idx];
+      if (player && player.seekTo) {
+        player.seekTo(seg.start, true);
+        player.playVideo();
+      }
+    }
+
+    function updateActiveButton() {
+      document.querySelectorAll('.btn-segment').forEach((b, idx) => {
+        if (idx === currentSegmentIndex) {
+          b.classList.add('active');
+        } else {
+          b.classList.remove('active');
+        }
+      });
+    }
+
+    function startLoopMonitor() {
+      if (checkInterval) clearInterval(checkInterval);
+      checkInterval = setInterval(() => {
+        if (!player || typeof player.getCurrentTime !== 'function') return;
+        const state = player.getPlayerState();
+        if (state !== YT.PlayerState.PLAYING) return;
+
+        const currentTime = player.getCurrentTime();
+        const activeSeg = segments[currentSegmentIndex];
+
+        if (isLooping && currentTime >= activeSeg.end) {
+          player.seekTo(activeSeg.start, true);
+        }
+      }, 100);
+    }
+
+    function toggleLoop() {
+      isLooping = !isLooping;
+      const btn = document.getElementById('btnLoopToggle');
+      if (isLooping) {
+        btn.innerText = "반복 재생 켜짐";
+        btn.classList.add('active');
+      } else {
+        btn.innerText = "반복 재생 꺼짐";
+        btn.classList.remove('active');
+      }
+    }
+
+    function prevSegment() {
+      const newIdx = (currentSegmentIndex - 1 + segments.length) % segments.length;
+      selectSegment(newIdx);
+    }
+
+    function nextSegment() {
+      const newIdx = (currentSegmentIndex + 1) % segments.length;
+      selectSegment(newIdx);
+    }
+
+    function replayCurrent() {
+      selectSegment(currentSegmentIndex);
+    }
+
+    function changeSpeed(val) {
+      if (player && player.setPlaybackRate) {
+        player.setPlaybackRate(parseFloat(val));
+      }
+    }
+
+    // 단축키 이벤트
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!player) return;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+        else player.playVideo();
+      } else if (e.key === 'q' || e.key === 'Q') {
+        prevSegment();
+      } else if (e.key === 'w' || e.key === 'W') {
+        nextSegment();
+      } else if (e.key === 'r' || e.key === 'R') {
+        replayCurrent();
+      } else if (e.key === 'l' || e.key === 'L') {
+        toggleLoop();
+      }
+    });
+
+    renderButtons();
+  </script>
+</body>
+</html>
